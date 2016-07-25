@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# Address of authoritative nameserver
+SERVER=
+# Zone to update (e.g. craigcabrey.com)
+ZONE=
+# Host to update
+HOST=
+# Interface from which to fetch an address
+INTERFACE=
+# Path to the dnssec key
+KEY=
+
+WHICH=/usr/bin/which
+TMPFILE=`mktemp /tmp/nsupdate.XXXXXXXXXX` || exit 1
+DATE=`$WHICH date` || exit 1
+RM=`$WHICH rm` || exit 1
+ECHO=`$WHICH echo` || exit 1
+NSUPDATE=`$WHICH nsupdate` || exit 1
+IFCONFIG=`$WHICH ifconfig` || exit 1
+
+IP=`$IFCONFIG $INTERFACE | grep inet | awk '{print $2}'`
+
+$ECHO "server $SERVER" > $TMPFILE
+$ECHO "zone $ZONE." >> $TMPFILE
+$ECHO "update delete $HOST.$ZONE" >> $TMPFILE
+$ECHO "update add $HOST.$ZONE 60 A $IP" >> $TMPFILE
+$ECHO "send" >> $TMPFILE
+
+$NSUPDATE -k $KEY -v $TMPFILE 2>&1 && $RM $TMPFILE && $DATE +"%I:%M:%S %p on %D" > /var/run/ddns-update
